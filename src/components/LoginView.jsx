@@ -69,7 +69,7 @@ const LoginWithPassword = ({ onLogin }) => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@company.com"
+              placeholder="name@company.com"
               required
               style={styles.input}
               autoFocus
@@ -128,7 +128,7 @@ const LoginWithPassword = ({ onLogin }) => {
           color: '#666'
         }}>
           <strong>Default Admin:</strong><br />
-          Email: admin@company.com<br />
+          Email: name@company.com<br />
           Password: admin123
         </div>
       </div>

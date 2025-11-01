@@ -169,6 +169,13 @@ const styles = {
   loginHeader: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '10px', textAlign: 'center' },
   loginTitle: { fontSize: '24px', fontWeight: '800', color: theme.textOnLight, margin: 0, letterSpacing: '0.06em', textTransform: 'uppercase' },
   loginSubtitle: { fontSize: '14px', color: theme.subOnLight, textAlign: 'center', marginTop: '4px', marginBottom: '22px' },
+  logo: {
+    width: '180px',
+    height: 'auto',
+    marginBottom: '8px',
+    filter: 'drop-shadow(0 4px 12px rgba(0, 0, 0, 0.1))',
+    transition: 'transform 0.3s ease',
+  },
 
   loginForm: { display: 'flex', flexDirection: 'column', gap: '16px' },
   formGroup: { display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' },

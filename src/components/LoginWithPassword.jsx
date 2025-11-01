@@ -4,6 +4,7 @@ import { styles, theme  } from '../styles/styles';
 import { supabase } from '../supabaseClient';
 import LanguageToggle from './LanguageToggle';
 import { useLanguage } from '../contexts/LanguageContext';
+import logo from '../assets/ososoft-logo.png';
 
 
 
@@ -93,14 +94,22 @@ return (
           <LanguageToggle />
         </div>
 
-        {/* Header with Clock + Title */}
-        <div style={styles.loginHeader}>
-          {/* aqua icon on dark gradient */}
-          <Clock size={48} color={theme.aqua} />
-          <h1 style={styles.loginTitle}>{t.login.title}</h1>
+        {/* Header with Logo */}
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <img
+            src={logo}
+            alt="Company Logo"
+            style={styles.logo}
+            draggable={false}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+          />
+          <div style={styles.loginHeader}>
+            <Clock size={32} color={theme.teal} />
+            <h1 style={styles.loginTitle}>{t.login.title}</h1>
+          </div>
+          <p style={styles.loginSubtitle}>{t.login.subtitle}</p>
         </div>
-
-        <p style={styles.loginSubtitle}>{t.login.subtitle}</p>
 
         <form onSubmit={handleLogin}>
           {/* Email Field */}

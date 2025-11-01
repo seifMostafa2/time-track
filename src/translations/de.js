@@ -28,7 +28,7 @@ export const de = {
     title: 'Zeiterfassung',
     subtitle: 'Studentisches Zeiterfassungssystem',
     emailLabel: 'E-Mail-Adresse',
-    emailPlaceholder: 'admin@company.com',
+    emailPlaceholder: 'name@company.com',
     passwordLabel: 'Passwort',
     passwordPlaceholder: 'Passwort eingeben',
     loginButton: 'Anmelden',

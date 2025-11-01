@@ -39,7 +39,7 @@ resetPassword: {
     title: 'Time Tracker',
     subtitle: 'Student Time Tracking System',
     emailLabel: 'Email Address',
-    emailPlaceholder: 'admin@company.com',
+    emailPlaceholder: 'name@company.com',
     passwordLabel: 'Password',
     passwordPlaceholder: 'Enter your password',
     loginButton: 'Login',
