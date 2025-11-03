@@ -1,47 +1,63 @@
-import { useState } from 'react';
-import { Mail, ArrowLeft } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Mail, ArrowLeft, Check, Clock } from 'lucide-react';
 import { styles } from '../styles/styles';
-import { supabase } from '../supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 
-const ForgotPassword = ({ onBack, onResetSent }) => {
+const ForgotPassword = ({ onBack }) => {
   const { t } = useLanguage();
+  const { resetPasswordForEmail } = useAuth();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [success, setSuccess] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  // Cooldown timer effect
+  useEffect(() => {
+    if (cooldown > 0) {
+      const timer = setTimeout(() => {
+        setCooldown(cooldown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [cooldown]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage('');
+    setSuccess(false);
 
     try {
-      const { data: user, error } = await supabase
-        .from('students')
-        .select('*')
-        .eq('email', email.toLowerCase())
-        .single();
+      const { error } = await resetPasswordForEmail(email.toLowerCase().trim());
 
-      if (error || !user) {
-        setMessage('E-Mail nicht gefunden');
+      if (error) {
+        console.error('Password reset error:', error);
+
+        // Handle specific error cases
+        if (error.code === 'user_not_found') {
+          setMessage(t.forgotPassword?.emailNotFound || 'No account found with this email address.');
+        } else if (error.code === 'account_not_migrated') {
+          setMessage(t.forgotPassword?.accountNotMigrated || 'This account needs to be migrated. Please contact your administrator.');
+        } else {
+          setMessage(error.message || t.forgotPassword?.error || 'Error sending reset link');
+        }
+
         setLoading(false);
         return;
       }
 
-      const resetToken = Math.random().toString(36).substr(2, 9);
-      
-      const { error: updateError } = await supabase
-        .from('students')
-        .update({ reset_token: resetToken })
-        .eq('id', user.id);
+      setSuccess(true);
+      setMessage(t.forgotPassword?.success || 'Reset link has been sent to your email. Please check your inbox.');
 
-      if (updateError) throw updateError;
+      // Start 100 second cooldown
+      setCooldown(100);
 
-      onResetSent(email, resetToken);
-      
     } catch (err) {
       console.error('Error:', err);
-      setMessage('Fehler aufgetreten');
+      setMessage(t.forgotPassword?.error || 'An error occurred');
+    } finally {
       setLoading(false);
     }
   };
@@ -85,7 +101,7 @@ const ForgotPassword = ({ onBack, onResetSent }) => {
           }}
         >
           <ArrowLeft size={20} />
-          Zurück
+          {t.common?.back || 'Back'}
         </button>
 
         {/* Header - Vertical */}
@@ -104,7 +120,7 @@ const ForgotPassword = ({ onBack, onResetSent }) => {
             margin: '0 0 8px 0',
             textAlign: 'center'
           }}>
-            Passwort vergessen
+            {t.forgotPassword?.title || 'Forgot Password'}
           </h1>
           <p style={{
             fontSize: '14px',
@@ -113,7 +129,7 @@ const ForgotPassword = ({ onBack, onResetSent }) => {
             textAlign: 'center',
             lineHeight: '1.5'
           }}>
-            Gib deine E-Mail ein, um dein Passwort zurückzusetzen
+            {t.forgotPassword?.subtitle || 'Enter your email to reset your password'}
           </p>
         </div>
 
@@ -155,35 +171,53 @@ const ForgotPassword = ({ onBack, onResetSent }) => {
           {message && (
             <div style={{
               padding: '12px',
-              background: '#fee2e2',
-              border: '1px solid #fecaca',
+              background: success ? '#d1fae5' : '#fee2e2',
+              border: `1px solid ${success ? '#a7f3d0' : '#fecaca'}`,
               borderRadius: '8px',
-              color: '#991b1b',
+              color: success ? '#065f46' : '#991b1b',
               fontSize: '14px',
-              textAlign: 'center'
+              textAlign: 'center',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
             }}>
+              {success && <Check size={18} />}
               {message}
             </div>
           )}
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || cooldown > 0}
             style={{
               padding: '14px 24px',
-              background: loading ? '#9ca3af' : '#2596BE',
+              background: (loading || cooldown > 0) ? '#9ca3af' : '#2596BE',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
               fontSize: '15px',
               fontWeight: '500',
-              cursor: loading ? 'not-allowed' : 'pointer',
+              cursor: (loading || cooldown > 0) ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s',
               boxShadow: '0 2px 8px rgba(37, 150, 190, 0.3)',
-              width: '100%'
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
             }}
           >
-            {loading ? 'Lädt...' : 'Reset-Link senden'}
+            {loading ? (
+              <>{t.common?.loading || 'Loading...'}</>
+            ) : cooldown > 0 ? (
+              <>
+                <Clock size={18} />
+                {t.forgotPassword?.waitSeconds?.replace('{seconds}', cooldown) || `Wait ${cooldown}s`}
+              </>
+            ) : (
+              <>{t.forgotPassword?.sendButton || 'Send Reset Link'}</>
+            )}
           </button>
         </form>
       </div>

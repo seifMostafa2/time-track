@@ -20,7 +20,8 @@ export const de = {
     yes: 'Ja',
     no: 'Nein',
     logout: 'Abmelden',
-    back : 'Zurück',
+    back: 'Zurück',
+    backToLogin: 'Zurück zum Login',
   },
 
   // Login
@@ -145,6 +146,7 @@ export const de = {
     noTasks: 'Noch keine Aufgaben. Erstellen Sie Ihre erste Aufgabenzuweisung!',
     studentsSelected: 'Student(en) ausgewählt',
     taskCreated: 'Aufgabe erfolgreich zugewiesen!',
+    taskUpdated: 'Aufgabe erfolgreich aktualisiert!',
     taskDeleted: 'Aufgabe erfolgreich gelöscht!',
     confirmDelete: 'Sind Sie sicher, dass Sie die Aufgabe löschen möchten',
     fillRequired: 'Bitte füllen Sie Titel aus, wählen Sie ein Projekt und weisen Sie mindestens einen Studenten zu',
@@ -218,18 +220,24 @@ export const de = {
     unknown: 'Unbekannt',
   },
   forgotPassword: {
-  title: 'Passwort vergessen?',
-  subtitle: 'Gib deine E-Mail ein, um dein Passwort zurückzusetzen',
-  sendButton: 'Reset-Link senden',
-  emailNotFound: 'E-Mail nicht gefunden'
-},
-resetPassword: {
-  title: 'New Password',
-  subtitle: 'Create a new password for',
-  resetButton: 'Change Password',
-  success: 'Password changed successfully!',
-  invalidToken: 'Invalid or expired reset link'
-},
+    title: 'Passwort vergessen?',
+    subtitle: 'Gib deine E-Mail ein, um dein Passwort zurückzusetzen',
+    sendButton: 'Reset-Link senden',
+    emailNotFound: 'Kein Konto mit dieser E-Mail-Adresse gefunden. Bitte überprüfe deine E-Mail.',
+    accountNotMigrated: 'Dieses Konto muss migriert werden. Bitte kontaktiere deinen Administrator.',
+    success: 'Reset-Link wurde an deine E-Mail gesendet. Bitte überprüfe deinen Posteingang.',
+    error: 'Fehler beim Senden des Reset-Links',
+    waitSeconds: 'Warte {seconds}s',
+  },
+  resetPassword: {
+    title: 'Neues Passwort',
+    subtitle: 'Erstelle ein neues Passwort für dein Konto',
+    resetButton: 'Passwort ändern',
+    success: 'Passwort erfolgreich geändert!',
+    invalidToken: 'Ungültiger oder abgelaufener Reset-Link',
+    linkExpired: 'Dieser Passwort-Reset-Link ist ungültig oder abgelaufen. Bitte fordere einen neuen an.',
+    redirecting: 'Weiterleitung zum Login...',
+  },
 
 
   // Settings

@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Lock, Check, AlertCircle } from 'lucide-react';
 import { styles } from '../styles/styles';
-import { supabase } from '../supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Key, ArrowLeft } from 'lucide-react';
 import LanguageToggle from './LanguageToggle';
 
-const ChangePassword = ({ user, onPasswordChanged, onBack }) => {
+const ChangePassword = ({ onPasswordChanged, onBack }) => {
     const { t } = useLanguage();
+    const { userProfile, updatePassword, signIn, user } = useAuth();
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -19,9 +20,9 @@ const ChangePassword = ({ user, onPasswordChanged, onBack }) => {
     e.preventDefault();
     setError('');
 
-    // ❗ Insecure check – replace with Supabase Auth verification (see below)
-    if (user.password_hash !== currentPassword) {
-      setError(t.changePassword.errors.currentIncorrect);
+    // Validate inputs
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setError(t.changePassword.errors.fillRequired);
       return;
     }
 
@@ -38,41 +39,32 @@ const ChangePassword = ({ user, onPasswordChanged, onBack }) => {
     setLoading(true);
 
     try {
-      console.log('Attempting to change password for user:', user.id);
+      // For first login, we need to verify current password by attempting to sign in
+      if (userProfile?.first_login) {
+        const { error: signInError } = await signIn(user.email, currentPassword);
+        if (signInError) {
+          setError(t.changePassword.errors.currentIncorrect);
+          setLoading(false);
+          return;
+        }
+      }
 
-      // ✅ Secure approach (recommended):
-      // 1) Verify current password
-      // const { error: signInErr } = await supabase.auth.signInWithPassword({
-      //   email: user.email,
-      //   password: currentPassword,
-      // });
-      // if (signInErr) throw signInErr;
-      // 2) Update auth password
-      // const { error: updateAuthErr } = await supabase.auth.updateUser({ password: newPassword });
-      // if (updateAuthErr) throw updateAuthErr;
-
-      // Your current table-based update (kept for compatibility):
-      const { data, error: updateError } = await supabase
-        .from('students')
-        .update({
-          password_hash: newPassword,
-          first_login: false,
-        })
-        .eq('id', user.id)
-        .select();
+      // Update password using Supabase Auth
+      const { error: updateError } = await updatePassword(newPassword);
 
       if (updateError) {
-        console.error('Supabase error:', updateError);
+        console.error('Password update error:', updateError);
         throw updateError;
       }
 
-      console.log('Password updated successfully:', data);
+      console.log('Password updated successfully');
 
       alert(t.changePassword.success);
-      onPasswordChanged({ ...user, password_hash: newPassword, first_login: false });
+      onPasswordChanged();
     } catch (err) {
       console.error('Error changing password:', err);
       setError(`${t.changePassword.errors.fillRequired} (${err.message})`);
+    } finally {
       setLoading(false);
     }
   };

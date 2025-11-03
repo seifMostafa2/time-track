@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Clock, Lock, Mail, AlertCircle } from 'lucide-react';
 import { styles, theme  } from '../styles/styles';
-import { supabase } from '../supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
 import LanguageToggle from './LanguageToggle';
 import { useLanguage } from '../contexts/LanguageContext';
 import logo from '../assets/ososoft-logo.png';
@@ -11,6 +11,7 @@ import logo from '../assets/ososoft-logo.png';
 
 const LoginWithPassword = ({ onLogin, onForgotPassword }) => {
   const { t } = useLanguage();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,55 +30,27 @@ const LoginWithPassword = ({ onLogin, onForgotPassword }) => {
         return;
       }
 
-      // Query the database for the user
-      const { data, error: queryError } = await supabase
-        .from('students')
-        .select('*')
-        .eq('email', email.toLowerCase().trim());
+      // Use Supabase Auth for login
+      const { data, error: signInError } = await signIn(email, password);
 
-      // Handle database errors
-      if (queryError) {
-        console.error('Database query error:', queryError);
-        setError(t.login.genericError);
-        setLoading(false);
-        return;
-      }
+      if (signInError) {
+        console.error('Login error:', signInError);
 
-      // Check if user exists
-      if (!data || data.length === 0) {
-        setError(t.login.invalidCredentials);
-        setLoading(false);
-        return;
-      }
-
-      const user = data[0];
-
-      // NOTE: This is still using plain text password comparison
-      // TODO: Implement proper password hashing with bcrypt
-      // For now, keeping the existing logic but with better structure
-      if (user.password_hash !== password) {
-        setError(t.login.invalidCredentials);
-        setLoading(false);
-        return;
-      }
-
-      // Check if account is active (if you have this field)
-      if (user.status && user.status === 'inactive') {
-        setError(t.login.accountInactive);
+        // Handle specific error cases
+        if (signInError.message.includes('Invalid login credentials')) {
+          setError(t.login.invalidCredentials);
+        } else if (signInError.message.includes('Email not confirmed')) {
+          setError(t.login.emailNotConfirmed || 'Please confirm your email address');
+        } else {
+          setError(t.login.genericError);
+        }
         setLoading(false);
         return;
       }
 
       // Successful login
-      console.log('Login successful for user:', user.email);
-      
-      // Update last login timestamp (optional)
-      //await supabase
-       // .from('students')
-       // .update({ last_login: new Date().toISOString() })
-       // .eq('id', user.id);
-
-      onLogin(user);
+      console.log('Login successful for user:', data.user.email);
+      onLogin();
     } catch (err) {
       console.error('Login error:', err);
       setError(t.login.genericError);
@@ -207,27 +180,24 @@ return (
             )}
           </button>
 
-          {/* Forgot password link (aqua on dark) */}
+          {/* Forgot password link */}
           <div style={{ textAlign: 'center', marginTop: 16 }}>
-<div style={{ textAlign: 'center', marginTop: 16 }}>
-  <button
-    type="button"
-    onClick={() => onForgotPassword && onForgotPassword()}
-    style={{
-      background: 'none',
-      border: 'none',
-      color: theme.textOnLight,   // <- black/dark text
-      textDecoration: 'underline',
-      cursor: 'pointer',
-      fontSize: 14,
-    }}
-    onMouseEnter={(e) => (e.currentTarget.style.color = theme.textOnLight)}
-    onMouseLeave={(e) => (e.currentTarget.style.color = theme.textOnLight)}
-  >
-    {t.forgotPassword.title}
-  </button>
-</div>
-
+            <button
+              type="button"
+              onClick={onForgotPassword}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: theme.textOnLight,
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                fontSize: 14,
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#2596BE')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = theme.textOnLight)}
+            >
+              {t.forgotPassword?.title || 'Forgot Password?'}
+            </button>
           </div>
         </form>
 

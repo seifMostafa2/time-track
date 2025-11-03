@@ -18,21 +18,28 @@ export const en = {
     yes: 'Yes',
     no: 'No',
     logout: 'Logout',
-    back : 'back',
+    back: 'Back',
+    backToLogin: 'Back to Login',
   },
   forgotPassword: {
-  title: 'Forgot Password',
-  subtitle: 'Enter your email to reset your password',
-  sendButton: 'Send Reset Link',
-  emailNotFound: 'Email not found'
-},
-resetPassword: {
-  title: 'New Password',
-  subtitle: 'Create a new password for',
-  resetButton: 'Change Password',
-  success: 'Password changed successfully!',
-  invalidToken: 'Invalid or expired reset link'
-},
+    title: 'Forgot Password',
+    subtitle: 'Enter your email to reset your password',
+    sendButton: 'Send Reset Link',
+    emailNotFound: 'No account found with this email address. Please check your email.',
+    accountNotMigrated: 'This account needs to be migrated. Please contact your administrator.',
+    success: 'Reset link has been sent to your email. Please check your inbox.',
+    error: 'Error sending reset link',
+    waitSeconds: 'Wait {seconds}s',
+  },
+  resetPassword: {
+    title: 'New Password',
+    subtitle: 'Create a new password for your account',
+    resetButton: 'Change Password',
+    success: 'Password changed successfully!',
+    invalidToken: 'Invalid or expired reset link',
+    linkExpired: 'This password reset link is invalid or has expired. Please request a new one.',
+    redirecting: 'Redirecting to login...',
+  },
 
   // Login
   login: {
@@ -156,6 +163,7 @@ resetPassword: {
     noTasks: 'No tasks yet. Create your first task assignment!',
     studentsSelected: 'student(s) selected',
     taskCreated: 'Task assigned successfully!',
+    taskUpdated: 'Task updated successfully!',
     taskDeleted: 'Task deleted successfully!',
     confirmDelete: 'Are you sure you want to delete task',
     fillRequired: 'Please fill in title, select a project, and assign to at least one student',

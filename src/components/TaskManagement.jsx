@@ -105,6 +105,74 @@ const TaskManagement = ({ currentUser, students, onRefresh }) => {
     }
   };
 
+  const handleEditTask = (task) => {
+    // Get currently assigned students for this task
+    const assignments = taskAssignments.filter((a) => a.task_id === task.id);
+    const assignedStudentIds = assignments.map((a) => String(a.student_id));
+
+    setEditingTask({
+      ...task,
+      assigned_students: assignedStudentIds,
+    });
+    setShowAddForm(false); // Close add form if open
+  };
+
+  const handleUpdateTask = async (e) => {
+    e.preventDefault();
+
+    if (!editingTask.title || !editingTask.project_id || editingTask.assigned_students.length === 0) {
+      alert(t.tasks?.fillRequired || 'Bitte füllen Sie Titel aus, wählen Sie ein Projekt und weisen Sie mindestens einen Studenten zu');
+      return;
+    }
+
+    try {
+      // Update task
+      const { error: taskError } = await supabase
+        .from('tasks')
+        .update({
+          title: editingTask.title,
+          description: editingTask.description,
+          project_id: parseInt(editingTask.project_id),
+          priority: editingTask.priority,
+          due_date: editingTask.due_date || null,
+          status: editingTask.status,
+        })
+        .eq('id', editingTask.id);
+
+      if (taskError) throw taskError;
+
+      // Delete old assignments
+      const { error: deleteError } = await supabase
+        .from('task_assignments')
+        .delete()
+        .eq('task_id', editingTask.id);
+
+      if (deleteError) throw deleteError;
+
+      // Insert new assignments
+      const assignments = editingTask.assigned_students.map((studentId) => ({
+        task_id: editingTask.id,
+        student_id: parseInt(studentId),
+      }));
+
+      const { error: assignError } = await supabase.from('task_assignments').insert(assignments);
+      if (assignError) throw assignError;
+
+      alert(t.tasks?.taskUpdated || 'Aufgabe erfolgreich aktualisiert!');
+      setEditingTask(null);
+      await fetchTasks();
+      await fetchTaskAssignments();
+      await onRefresh?.();
+    } catch (error) {
+      console.error('Error updating task:', error);
+      alert(t.common?.errorUpdating || 'Fehler beim Aktualisieren');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingTask(null);
+  };
+
   const handleDeleteTask = async (taskId, taskTitle) => {
     const confirmMsg =
       (t.tasks?.confirmDelete && `${t.tasks.confirmDelete} "${taskTitle}"?`) ||
@@ -170,6 +238,15 @@ const TaskManagement = ({ currentUser, students, onRefresh }) => {
       setNewTask({ ...newTask, assigned_students: currentSelection.filter((id) => id !== studentId) });
     } else {
       setNewTask({ ...newTask, assigned_students: [...currentSelection, studentId] });
+    }
+  };
+
+  const toggleEditStudentSelection = (studentId) => {
+    const currentSelection = editingTask.assigned_students;
+    if (currentSelection.includes(studentId)) {
+      setEditingTask({ ...editingTask, assigned_students: currentSelection.filter((id) => id !== studentId) });
+    } else {
+      setEditingTask({ ...editingTask, assigned_students: [...currentSelection, studentId] });
     }
   };
 
@@ -335,6 +412,147 @@ const TaskManagement = ({ currentUser, students, onRefresh }) => {
         </form>
       )}
 
+      {/* Edit Task Form */}
+      {editingTask && (
+        <form onSubmit={handleUpdateTask} style={{ marginBottom: '24px', padding: '20px', background: '#fef3c7', borderRadius: '8px', border: '2px solid #f59e0b' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h3 style={{ margin: 0, color: '#92400e', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Edit2 size={20} />
+              {txt.editTask}
+            </h3>
+            <button type="button" onClick={handleCancelEdit} style={{ ...styles.iconButton, background: '#fee2e2', padding: '8px' }}>
+              <X size={18} color="#dc2626" />
+            </button>
+          </div>
+
+          <div style={styles.formGroup}>
+            <label style={styles.label}>{txt.project} *</label>
+            <select
+              value={editingTask.project_id}
+              onChange={(e) => setEditingTask({ ...editingTask, project_id: e.target.value })}
+              required
+              style={styles.input}
+            >
+              <option value="">{txt.selectProject}</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>{project.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={styles.formGroup}>
+            <label style={styles.label}>{txt.taskTitle} *</label>
+            <input
+              type="text"
+              value={editingTask.title}
+              onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })}
+              placeholder={txt.taskTitlePlaceholder}
+              required
+              style={styles.input}
+            />
+          </div>
+
+          <div style={styles.formGroup}>
+            <label style={styles.label}>{txt.description}</label>
+            <textarea
+              value={editingTask.description}
+              onChange={(e) => setEditingTask({ ...editingTask, description: e.target.value })}
+              placeholder={txt.descriptionPlaceholder}
+              rows="3"
+              style={styles.textarea}
+            />
+          </div>
+
+          <div style={styles.formGroup}>
+            <label style={styles.label}>
+              <Users size={16} style={{ display: 'inline', marginRight: '8px' }} />
+              {txt.assignToStudents} * {txt.selectMultiple}
+            </label>
+            <div style={{ border: '1px solid #ddd', borderRadius: '6px', padding: '12px', maxHeight: '200px', overflowY: 'auto', background: 'white' }}>
+              {students.filter((s) => s.role === 'student').map((student) => {
+                const idStr = String(student.id);
+                const checked = editingTask.assigned_students.includes(idStr);
+                return (
+                  <label
+                    key={student.id}
+                    style={{
+                      display: 'block',
+                      padding: '8px',
+                      cursor: 'pointer',
+                      borderRadius: '4px',
+                      marginBottom: '4px',
+                      background: checked ? '#eff6ff' : 'transparent',
+                      border: checked ? '2px solid #667eea' : '2px solid transparent',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleEditStudentSelection(idStr)}
+                      style={{ marginRight: '8px' }}
+                    />
+                    {student.name} ({student.email})
+                  </label>
+                );
+              })}
+            </div>
+            {editingTask.assigned_students.length > 0 && (
+              <div style={{ marginTop: '8px', fontSize: '14px', color: '#667eea', fontWeight: '500' }}>
+                {editingTask.assigned_students.length} {txt.studentsSelected}
+              </div>
+            )}
+          </div>
+
+          <div style={styles.formGrid}>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>{txt.priority}</label>
+              <select
+                value={editingTask.priority}
+                onChange={(e) => setEditingTask({ ...editingTask, priority: e.target.value })}
+                style={styles.input}
+              >
+                <option value="low">{prioLabel('low')}</option>
+                <option value="medium">{prioLabel('medium')}</option>
+                <option value="high">{prioLabel('high')}</option>
+                <option value="urgent">{prioLabel('urgent')}</option>
+              </select>
+            </div>
+
+            <div style={styles.formGroup}>
+              <label style={styles.label}>{txt.status}</label>
+              <select
+                value={editingTask.status}
+                onChange={(e) => setEditingTask({ ...editingTask, status: e.target.value })}
+                style={styles.input}
+              >
+                <option value="pending">{statusLabel('pending')}</option>
+                <option value="in_progress">{statusLabel('in_progress')}</option>
+                <option value="completed">{statusLabel('completed')}</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={styles.formGroup}>
+            <label style={styles.label}>{txt.dueDate}</label>
+            <input
+              type="date"
+              value={editingTask.due_date || ''}
+              onChange={(e) => setEditingTask({ ...editingTask, due_date: e.target.value })}
+              style={styles.input}
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button type="submit" style={{ ...styles.button, flex: 1 }}>
+              <Check size={18} /> {t.common?.save || 'Speichern'}
+            </button>
+            <button type="button" onClick={handleCancelEdit} style={{ ...styles.button, flex: 1, background: '#6b7280' }}>
+              <X size={18} /> {txt.cancel}
+            </button>
+          </div>
+        </form>
+      )}
+
       {/* Display tasks grouped by project */}
       {Object.keys(tasksByProject).map((projectId) => {
         const project = projects.find((p) => p.id === parseInt(projectId));
@@ -426,9 +644,24 @@ const TaskManagement = ({ currentUser, students, onRefresh }) => {
                           </div>
                         </td>
                         <td style={styles.td}>
-                          <button onClick={() => handleDeleteTask(task.id, task.title)} style={styles.iconButton} aria-label={txt.deleteTask} title={txt.deleteTask}>
-                            <Trash2 size={18} color="#ef4444" />
-                          </button>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              onClick={() => handleEditTask(task)}
+                              style={styles.iconButton}
+                              aria-label={txt.editTask}
+                              title={txt.editTask}
+                            >
+                              <Edit2 size={18} color="#2596BE" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTask(task.id, task.title)}
+                              style={styles.iconButton}
+                              aria-label={txt.deleteTask}
+                              title={txt.deleteTask}
+                            >
+                              <Trash2 size={18} color="#ef4444" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

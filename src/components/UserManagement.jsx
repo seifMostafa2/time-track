@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { UserPlus, Trash2, Key } from 'lucide-react';
 import { styles } from '../styles/styles';
 import { supabase } from '../supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 
 
 const UserManagement = ({ students, onRefresh }) => {
   const { t } = useLanguage();
+  const { signUp } = useAuth();
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [newUser, setNewUser] = useState({
@@ -30,47 +32,24 @@ const UserManagement = ({ students, onRefresh }) => {
       return;
     }
 
-    // Check if email already exists
-    try {
-      const { data: existingUser, error: checkErr } = await supabase
-        .from('students')
-        .select('email')
-        .eq('email', newUser.email.toLowerCase())
-        .single();
-
-      // If we got a row, email exists
-      if (existingUser) {
-        alert(t.users?.emailExists || 'Diese E-Mail ist bereits registriert. Bitte verwenden Sie eine andere E-Mail.');
-        return;
-      }
-      // Ignore "no rows" error (PGRST116), handle other errors
-      if (checkErr && checkErr.code !== 'PGRST116') {
-        console.error('Error checking email:', checkErr);
-      }
-    } catch (error) {
-      console.error('Unexpected error checking email:', error);
+    if (newUser.password.length < 6) {
+      alert(t.users?.passwordTooShort || 'Passwort muss mindestens 6 Zeichen lang sein');
+      return;
     }
 
     try {
-      const { error } = await supabase
-        .from('students')
-        .insert([
-          {
-            name: newUser.name,
-            email: newUser.email.toLowerCase(),
-            password_hash: newUser.password, // ⚠️ Consider moving to Supabase Auth later
-            role: newUser.role,
-            first_login: true,
-          },
-        ])
-        .select();
+      // Create user via Supabase Auth
+      const { error } = await signUp(newUser.email, newUser.password, {
+        name: newUser.name,
+        role: newUser.role,
+      });
 
       if (error) {
-        console.error('Insert error:', error);
-        if (error.code === '23505') {
+        console.error('Sign up error:', error);
+        if (error.message.includes('already registered')) {
           alert(t.users?.emailExists || 'Diese E-Mail ist bereits registriert. Bitte verwenden Sie eine andere E-Mail.');
         } else {
-          alert(`${t.users?.userCreated || 'Benutzer erfolgreich erstellt!'} (${error.message})`);
+          alert(`${t.common?.errorCreating || 'Fehler beim Erstellen'}: ${error.message}`);
         }
         return;
       }
@@ -208,6 +187,7 @@ const UserManagement = ({ students, onRefresh }) => {
               >
                 <option value="student">{txt.student}</option>
                 <option value="admin">{txt.admin}</option>
+                  <option value="hr">HR</option> 
               </select>
             </div>
 
