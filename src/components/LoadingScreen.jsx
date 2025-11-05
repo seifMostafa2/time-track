@@ -8,7 +8,7 @@ const LoadingScreen = () => {
     <div style={styles.loginContainer}>
       <div style={styles.loading}>
         <Clock size={48} color="#667eea" />
-        <p>Loading data from Supabase...</p>
+        <p>Loading</p>
       </div>
     </div>
   );

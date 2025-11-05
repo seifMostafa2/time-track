@@ -89,7 +89,9 @@ export const AuthProvider = ({ children }) => {
   // Sign up new user
   const signUp = async (email, password, userData) => {
     try {
-      // Create auth user
+      console.log('🔵 Starting user creation for:', email);
+
+      // Create auth user - the database trigger will automatically create the students record
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email.toLowerCase().trim(),
         password,
@@ -101,28 +103,22 @@ export const AuthProvider = ({ children }) => {
         },
       });
 
-      if (authError) throw authError;
-
-      // Create profile in students table
-      if (authData.user) {
-        const { error: profileError } = await supabase
-          .from('students')
-          .insert([
-            {
-              auth_user_id: authData.user.id,
-              email: email.toLowerCase().trim(),
-              name: userData.name,
-              role: userData.role,
-              first_login: true,
-            },
-          ]);
-
-        if (profileError) throw profileError;
+      if (authError) {
+        console.error('❌ Auth user creation failed:', authError);
+        throw authError;
       }
 
+      console.log('✅ Auth user created:', authData.user?.id);
+
+      // Check if user was created successfully
+      if (!authData.user) {
+        throw new Error('User creation failed - no user returned');
+      }
+
+      console.log('✅ User and profile created successfully (via database trigger)');
       return { data: authData, error: null };
     } catch (error) {
-      console.error('Sign up error:', error);
+      console.error('❌ Sign up error:', error);
       return { data: null, error };
     }
   };

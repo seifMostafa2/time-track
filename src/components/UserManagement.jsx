@@ -250,10 +250,18 @@ const UserManagement = ({ students, onRefresh }) => {
                   <span
                     style={{
                       ...styles.badge,
-                      ...(student.role === 'admin' ? { background: '#dbeafe', color: '#1e40af' } : styles.badgePending),
+                      ...(student.role === 'admin'
+                        ? { background: '#dbeafe', color: '#1e40af' }
+                        : student.role === 'hr'
+                        ? { background: '#fce7f3', color: '#9f1239' }
+                        : styles.badgePending),
                     }}
                   >
-                    {student.role === 'admin' ? txt.admin : txt.student}
+                    {student.role === 'admin'
+                      ? txt.admin
+                      : student.role === 'hr'
+                      ? 'HR'
+                      : txt.student}
                   </span>
                 </td>
                 <td style={styles.td}>
