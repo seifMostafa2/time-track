@@ -18,8 +18,20 @@ const AppContent = () => {
   const [timeEntries, setTimeEntries] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Initialize activeView from sessionStorage or default to 'login'
+  // Initialize activeView - check URL first, then sessionStorage
   const [activeView, setActiveView] = useState(() => {
+    // Check if we're on a password reset link
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const queryType = urlParams.get('type');
+    const hashType = hashParams.get('type');
+
+    if (queryType === 'recovery' || hashType === 'recovery') {
+      console.log('🔗 Password reset link detected on initial load');
+      return 'reset-password';
+    }
+
+    // Otherwise use saved view or default to login
     const savedView = sessionStorage.getItem('activeView');
     return savedView || 'login';
   });
@@ -156,9 +168,17 @@ const AppContent = () => {
     }
 
     if (!authLoading) {
-      if (user && userProfile) {
-        // User is authenticated
-        console.log('✅ User authenticated:', userProfile.email, 'Role:', userProfile.role);
+      if (user) {
+        // User has a session (might be recovery session or normal login)
+        console.log('✅ User session exists:', user.email);
+
+        // If we have a user but no profile yet, wait for profile to load
+        if (!userProfile) {
+          console.log('⏳ Waiting for user profile to load...');
+          return;
+        }
+
+        console.log('✅ User profile loaded:', userProfile.email, 'Role:', userProfile.role);
 
         // Don't redirect if user is on forgot-password or reset-password
         // (they might be logged in but want to reset password)
@@ -167,10 +187,8 @@ const AppContent = () => {
           return;
         }
 
-        if (userProfile.first_login) {
-          console.log('→ First login detected, showing change password');
-          setActiveView('change-password');
-        } else if (userProfile.role === 'admin') {
+        // Removed first_login check - users can use "Forgot Password" instead
+        if (userProfile.role === 'admin') {
           console.log('→ Admin role, showing admin view');
           setActiveView('admin');
         } else if (userProfile.role === 'hr') {

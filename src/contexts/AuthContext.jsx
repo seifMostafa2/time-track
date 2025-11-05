@@ -91,7 +91,11 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('🔵 Starting user creation for:', email);
 
-      // Create auth user - the database trigger will automatically create the students record
+      // Store current session to restore it later
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      console.log('💾 Saved current admin session');
+
+      // Create auth user (this will temporarily log in as the new user)
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email.toLowerCase().trim(),
         password,
@@ -115,7 +119,41 @@ export const AuthProvider = ({ children }) => {
         throw new Error('User creation failed - no user returned');
       }
 
-      console.log('✅ User and profile created successfully (via database trigger)');
+      // Manually create the students record (in case trigger doesn't exist)
+      console.log('🔵 Creating students record...');
+      const { error: studentError } = await supabase
+        .from('students')
+        .insert({
+          auth_user_id: authData.user.id,
+          email: email.toLowerCase().trim(),
+          name: userData.name,
+          role: userData.role,
+          first_login: true,
+        });
+
+      if (studentError) {
+        console.error('❌ Students record creation failed:', studentError);
+        // If it's a duplicate key error, it means the trigger already created it
+        if (!studentError.message.includes('duplicate key')) {
+          throw studentError;
+        } else {
+          console.log('✅ Students record already exists (created by trigger)');
+        }
+      } else {
+        console.log('✅ Students record created manually');
+      }
+
+      // Restore the admin session
+      if (currentSession) {
+        console.log('🔄 Restoring admin session...');
+        await supabase.auth.setSession({
+          access_token: currentSession.access_token,
+          refresh_token: currentSession.refresh_token,
+        });
+        console.log('✅ Admin session restored');
+      }
+
+      console.log('✅ User and profile created successfully');
       return { data: authData, error: null };
     } catch (error) {
       console.error('❌ Sign up error:', error);
