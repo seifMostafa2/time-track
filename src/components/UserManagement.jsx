@@ -8,7 +8,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 const UserManagement = ({ students, onRefresh }) => {
   const { t } = useLanguage();
-  const { signUp } = useAuth();
+  const { signUp, userProfile } = useAuth();
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [newUser, setNewUser] = useState({
@@ -34,6 +34,12 @@ const UserManagement = ({ students, onRefresh }) => {
 
     if (newUser.password.length < 6) {
       alert(t.users?.passwordTooShort || 'Passwort muss mindestens 6 Zeichen lang sein');
+      return;
+    }
+
+    // Role-based permission check
+    if (userProfile?.role === 'hr' && newUser.role !== 'student') {
+      alert('HR users can only create Student accounts. Please contact an Administrator to create HR or Admin accounts.');
       return;
     }
 
@@ -186,8 +192,13 @@ const UserManagement = ({ students, onRefresh }) => {
                 style={styles.input}
               >
                 <option value="student">{txt.student}</option>
-                <option value="admin">{txt.admin}</option>
-                  <option value="hr">HR</option> 
+                {/* HR can only create students, Admin can create all roles */}
+                {userProfile?.role === 'admin' && (
+                  <>
+                    <option value="hr">HR</option>
+                    <option value="admin">{txt.admin}</option>
+                  </>
+                )}
               </select>
             </div>
 

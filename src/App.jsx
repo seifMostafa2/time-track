@@ -187,7 +187,14 @@ const AppContent = () => {
           return;
         }
 
-        // Removed first_login check - users can use "Forgot Password" instead
+        // Check if user needs to change password on first login
+        if (userProfile.first_login) {
+          console.log('→ First login detected, showing change password');
+          setActiveView('change-password');
+          return;
+        }
+
+        // Route to appropriate dashboard based on role
         if (userProfile.role === 'admin') {
           console.log('→ Admin role, showing admin view');
           setActiveView('admin');
@@ -217,9 +224,31 @@ const AppContent = () => {
   };
 
   const handlePasswordChanged = async () => {
-    console.log('Password changed, refreshing data');
-    sessionStorage.removeItem('activeView'); // Clear saved view after password change
-    await refreshData();
+    console.log('Password changed, updating first_login flag');
+
+    try {
+      // Update first_login to false in the database
+      if (userProfile?.id) {
+        const { error } = await supabase
+          .from('students')
+          .update({ first_login: false })
+          .eq('id', userProfile.id);
+
+        if (error) {
+          console.error('Error updating first_login flag:', error);
+        } else {
+          console.log('✅ first_login flag updated to false');
+        }
+      }
+
+      sessionStorage.removeItem('activeView'); // Clear saved view after password change
+      await refreshData();
+
+      // Force a re-render by clearing and reloading auth state
+      window.location.reload();
+    } catch (error) {
+      console.error('Error in handlePasswordChanged:', error);
+    }
   };
 
   const handleLogout = async () => {
@@ -307,7 +336,9 @@ const AppContent = () => {
         return (
           <HRView
             currentUser={userProfile}
+            students={students}
             onLogout={handleLogout}
+            onRefresh={refreshData}
           />
         );
 

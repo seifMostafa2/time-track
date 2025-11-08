@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Upload, Mail, FileSpreadsheet, Send, Edit } from 'lucide-react';
 import { styles } from '../styles/styles';
+import { useLanguage } from '../contexts/LanguageContext';
 import * as XLSX from 'xlsx';
 
 const HRRejectionEmails = () => {
+  const { t } = useLanguage();
   const [file, setFile] = useState(null);
   const [recipients, setRecipients] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -49,7 +51,7 @@ OSO HR Team`
         setFile(uploadedFile);
         setMessage('');
       } catch (error) {
-        setMessage('Fehler beim Lesen der Datei. Bitte überprüfe das Format.');
+        setMessage(t.hr?.errorReadingFile || 'Fehler beim Lesen der Datei. Bitte überprüfe das Format.');
         console.error(error);
       }
     };
@@ -65,13 +67,14 @@ OSO HR Team`
 
   const handleSendEmails = async () => {
     if (recipients.length === 0) {
-      alert('Keine Empfänger zum Senden');
+      alert(t.hr?.noRecipients || 'Keine Empfänger zum Senden');
       return;
     }
 
-    const confirmed = window.confirm(
-      `Möchten Sie wirklich ${recipients.filter(r => r.status === 'pending').length} E-Mails versenden?`
-    );
+    const pendingCount = recipients.filter(r => r.status === 'pending').length;
+    const confirmMsg = (t.hr?.confirmSend || 'Möchten Sie wirklich {count} E-Mails versenden?')
+      .replace('{count}', pendingCount);
+    const confirmed = window.confirm(confirmMsg);
 
     if (!confirmed) return;
 
@@ -167,15 +170,15 @@ OSO HR Team`
         ...styles.card,
         marginBottom: '24px'
       }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
           marginBottom: '20px'
         }}>
           <h2 style={{ ...styles.cardTitle, marginBottom: 0 }}>
             <Mail size={24} />
-            E-Mail-Vorlage
+            {t.hr?.emailTemplate || 'E-Mail-Vorlage'}
           </h2>
           <button
             onClick={() => setEditingTemplate(!editingTemplate)}
@@ -186,7 +189,7 @@ OSO HR Team`
             }}
           >
             <Edit size={16} />
-            {editingTemplate ? 'Fertig' : 'Bearbeiten'}
+            {editingTemplate ? (t.hr?.done || 'Fertig') : (t.hr?.edit || 'Bearbeiten')}
           </button>
         </div>
 
@@ -194,7 +197,7 @@ OSO HR Team`
           <div>
             <div style={{ marginBottom: '16px' }}>
               <label style={{ ...styles.label, display: 'block', marginBottom: '8px' }}>
-                Betreff
+                {t.hr?.subject || 'Betreff'}
               </label>
               <input
                 type="text"
@@ -209,7 +212,7 @@ OSO HR Team`
 
             <div>
               <label style={{ ...styles.label, display: 'block', marginBottom: '8px' }}>
-                Nachricht
+                {t.hr?.message || 'Nachricht'}
               </label>
               <textarea
                 value={emailTemplate.body}
@@ -284,11 +287,11 @@ OSO HR Team`
           background: 'rgba(37, 150, 190, 0.05)'
         }}>
           <Upload size={48} color="#2596BE" style={{ margin: '0 auto 16px' }} />
-          <h3 style={{ fontSize: '18px', marginBottom: '8px' }}>Excel-Datei hochladen</h3>
+          <h3 style={{ fontSize: '18px', marginBottom: '8px' }}>{t.hr?.uploadExcel || 'Excel-Datei hochladen'}</h3>
           <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
             Spalten: <strong>Mailadresse, Sprache, Anrede, Name</strong>
           </p>
-          
+
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <input
               type="file"
@@ -303,7 +306,7 @@ OSO HR Team`
               cursor: 'pointer'
             }}>
               <FileSpreadsheet size={20} />
-              Datei auswählen
+              {t.hr?.chooseFile || 'Datei auswählen'}
             </label>
 
             <button onClick={downloadTemplate} style={styles.exportButton}>
@@ -348,19 +351,22 @@ OSO HR Team`
                 }}
               >
                 <Send size={18} />
-                {loading ? 'Sende E-Mails...' : `${recipients.filter(r => r.status === 'pending').length} E-Mails senden`}
+                {loading
+                  ? (t.hr?.sending || 'Sende E-Mails...')
+                  : `${recipients.filter(r => r.status === 'pending').length} ${t.hr?.sendEmails || 'E-Mails senden'}`
+                }
               </button>
-              
+
               {recipients.some(r => r.status !== 'pending') && (
                 <button onClick={downloadResults} style={styles.exportButton}>
                   <FileSpreadsheet size={18} />
-                  Ergebnisse herunterladen
+                  {t.hr?.downloadResults || 'Ergebnisse herunterladen'}
                 </button>
               )}
 
               <span style={{ marginLeft: 'auto', fontSize: '14px', color: '#666' }}>
-                Gesamt: {recipients.length} | 
-                Ausstehend: {recipients.filter(r => r.status === 'pending').length} | 
+                Gesamt: {recipients.length} |
+                Ausstehend: {recipients.filter(r => r.status === 'pending').length} |
                 Gesendet: {recipients.filter(r => r.status === 'success').length} |
                 Fehler: {recipients.filter(r => r.status === 'failed').length}
               </span>
@@ -370,12 +376,12 @@ OSO HR Team`
               <table style={styles.table}>
                 <thead>
                   <tr>
-                    <th style={styles.th}>E-Mail</th>
-                    <th style={styles.th}>Name</th>
-                    <th style={styles.th}>Anrede</th>
-                    <th style={styles.th}>Sprache</th>
-                    <th style={styles.th}>Status</th>
-                    <th style={styles.th}>Aktionen</th>
+                    <th style={styles.th}>{t.hr?.email || 'E-Mail'}</th>
+                    <th style={styles.th}>{t.hr?.name || 'Name'}</th>
+                    <th style={styles.th}>{t.hr?.salutation || 'Anrede'}</th>
+                    <th style={styles.th}>{t.hr?.language || 'Sprache'}</th>
+                    <th style={styles.th}>{t.hr?.status || 'Status'}</th>
+                    <th style={styles.th}>{t.hr?.actions || 'Aktionen'}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -437,13 +443,13 @@ OSO HR Team`
           borderRadius: '8px',
           fontSize: '14px'
         }}>
-          <h4 style={{ marginBottom: '8px', fontSize: '16px' }}>📝 Anleitung:</h4>
+          <h4 style={{ marginBottom: '8px', fontSize: '16px' }}>📝 {t.hr?.instructions || 'Anleitung:'}</h4>
           <ol style={{ margin: 0, paddingLeft: '20px', color: '#666', lineHeight: '1.8' }}>
-            <li>E-Mail-Vorlage bearbeiten und Variablen verwenden</li>
-            <li>Excel-Datei mit Spalten hochladen: <strong>Mailadresse, Sprache, Anrede, Name</strong></li>
-            <li>Empfänger-Liste überprüfen und Vorschau ansehen</li>
-            <li>Auf "E-Mails senden" klicken</li>
-            <li>Ergebnisse als Excel herunterladen</li>
+            <li>{t.hr?.step1 || 'E-Mail-Vorlage bearbeiten und Variablen verwenden'}</li>
+            <li>{t.hr?.step2 || 'Excel-Datei mit Spalten hochladen: Mailadresse, Sprache, Anrede, Name'}</li>
+            <li>{t.hr?.step3 || 'Empfänger-Liste überprüfen und Vorschau ansehen'}</li>
+            <li>{t.hr?.step4 || 'Auf "E-Mails senden" klicken'}</li>
+            <li>{t.hr?.step5 || 'Ergebnisse als Excel herunterladen'}</li>
           </ol>
         </div>
       </div>
