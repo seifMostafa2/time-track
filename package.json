@@ -17,6 +17,7 @@
     "lucide-react": "^0.545.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "resend": "^6.4.2",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
@@ -34,5 +35,4 @@
     "tailwindcss": "^3.3.0",
     "vite": "npm:rolldown-vite@^7.1.14"
   }
-
 }

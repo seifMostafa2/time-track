@@ -26,98 +26,107 @@ Mit freundlichen Grüßen,
 OSO HR Team`
   });
 
-const handleFileUpload = (e) => {
-  const uploadedFile = e.target.files[0];
-  if (!uploadedFile) return;
-
-  // Check file type
-  const fileExtension = uploadedFile.name.split('.').pop().toLowerCase();
-  if (!['xlsx', 'xls'].includes(fileExtension)) {
-    setMessage('❌ Fehler: Bitte laden Sie nur Excel-Dateien hoch (.xlsx oder .xls)');
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = (event) => {
-    try {
-      const workbook = XLSX.read(event.target.result, { type: 'binary' });
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
-      const data = XLSX.utils.sheet_to_json(sheet);
-
-      // Check if file is empty
-      if (!data || data.length === 0) {
-        setMessage('❌ Fehler: Die Excel-Datei ist leer. Bitte fügen Sie Daten hinzu.');
-        return;
+  // Load sent history on mount
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('hr_email_sent_history');
+    if (savedHistory) {
+      try {
+        setSentHistory(JSON.parse(savedHistory));
+      } catch (error) {
+        console.error('Error parsing saved history:', error);
       }
-
-      // Check for required columns
-      const firstRow = data[0];
-      const hasRequiredColumns = 
-        (firstRow.Mailadresse || firstRow.mailadresse) &&
-        (firstRow.Name || firstRow.name);
-
-      if (!hasRequiredColumns) {
-        setMessage('❌ Fehler: Die Excel-Datei muss die Spalten "Mailadresse" und "Name" enthalten.');
-        return;
-      }
-
-      // Map columns: Mailadresse, Sprache, Anrede, Name
-      const formattedRecipients = data.map((row, index) => {
-        const email = row.Mailadresse || row.mailadresse || '';
-        const name = row.Name || row.name || '';
-
-        // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        const isValidEmail = emailRegex.test(email);
-        const alreadySent = sentHistory.includes(email.toLowerCase());
-
-        return {
-          id: index + 1,
-          email: email,
-          language: row.Sprache || row.sprache || 'DE',
-          salutation: row.Anrede || row.anrede || 'Sie',
-          name: name,
-          status: alreadySent ? 'alreadySent' : (isValidEmail && name ? 'pending' : 'failed'),
-          error: !isValidEmail ? 'Ungültige E-Mail' : (!name ? 'Name fehlt' : '')
-        };
-      });
-
-      // Check if any valid recipients exist
-      const validRecipients = formattedRecipients.filter(r => r.status === 'pending');
-      const alreadySentRecipients = formattedRecipients.filter(r => r.status === 'alreadySent');
-      if (validRecipients.length === 0) {
-        setMessage( t.hr?.ErrorRecpsion || '❌ Fehler: Keine gültigen Empfänger gefunden. Bitte überprüfen Sie die E-Mail-Adressen und Namen.');
-        return;
-      }
-
-      setRecipients(formattedRecipients);
-      setFile(uploadedFile);
-      
-      const invalidCount = formattedRecipients.length - validRecipients.length - alreadySentCount;
-      let message = '';
-      if (alreadySentCount > 0) {
-        message += `❌ Fehler: ${alreadySentCount} E-Mails wurden bereits versendet und werden übersprungen.`;
-      }if (validRecipients.length > 0) {
-        messageText += `${validRecipients.length} neue Empfänger gefunden.`;
-      }
-      if (invalidCount > 0) {
-        setMessage(`⚠️ Warnung: ${validRecipients.length} gültige Empfänger gefunden, ${invalidCount} ungültige Zeilen übersprungen.`);
-      } else {
-        setMessage(`✅ Erfolg: ${validRecipients.length} Empfänger erfolgreich geladen.`);
-      }
-    } catch (error) {
-      console.error('Error reading file:', error);
-      setMessage('❌ Fehler beim Lesen der Datei. Bitte stellen Sie sicher, dass es sich um eine gültige Excel-Datei handelt.');
     }
-  };
+  }, []);
 
-  reader.onerror = () => {
-    setMessage('❌ Fehler: Die Datei konnte nicht gelesen werden.');
-  };
+  const handleFileUpload = (e) => {
+    const uploadedFile = e.target.files[0];
+    if (!uploadedFile) return;
 
-  reader.readAsBinaryString(uploadedFile);
-};
+    const fileExtension = uploadedFile.name.split('.').pop().toLowerCase();
+    if (!['xlsx', 'xls'].includes(fileExtension)) {
+      setMessage('❌ Fehler: Bitte laden Sie nur Excel-Dateien hoch (.xlsx oder .xls)');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const workbook = XLSX.read(event.target.result, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const data = XLSX.utils.sheet_to_json(sheet);
+
+        if (!data || data.length === 0) {
+          setMessage('❌ Fehler: Die Excel-Datei ist leer. Bitte fügen Sie Daten hinzu.');
+          return;
+        }
+
+        const firstRow = data[0];
+        const hasRequiredColumns = 
+          (firstRow.Mailadresse || firstRow.mailadresse) &&
+          (firstRow.Name || firstRow.name);
+
+        if (!hasRequiredColumns) {
+          setMessage('❌ Fehler: Die Excel-Datei muss die Spalten "Mailadresse" und "Name" enthalten.');
+          return;
+        }
+
+        const formattedRecipients = data.map((row, index) => {
+          const email = row.Mailadresse || row.mailadresse || '';
+          const name = row.Name || row.name || '';
+
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          const isValidEmail = emailRegex.test(email);
+          const alreadySent = sentHistory.includes(email.toLowerCase());
+
+          return {
+            id: index + 1,
+            email: email,
+            language: row.Sprache || row.sprache || 'DE',
+            salutation: row.Anrede || row.anrede || 'Sie',
+            name: name,
+            status: alreadySent ? 'alreadySent' : (isValidEmail && name ? 'pending' : 'failed'),
+            error: alreadySent ? '⚠️ Bereits gesendet' : (!isValidEmail ? 'Ungültige E-Mail' : (!name ? 'Name fehlt' : ''))
+          };
+        });
+
+        const validRecipients = formattedRecipients.filter(r => r.status === 'pending');
+        const alreadySentCount = formattedRecipients.filter(r => r.status === 'alreadySent').length;
+        
+        if (validRecipients.length === 0 && alreadySentCount === 0) {
+          setMessage('❌ Fehler: Keine gültigen Empfänger gefunden. Bitte überprüfen Sie die E-Mail-Adressen und Namen.');
+          return;
+        }
+
+        setRecipients(formattedRecipients);
+        setFile(uploadedFile);
+        
+        const invalidCount = formattedRecipients.length - validRecipients.length - alreadySentCount;
+        let messageText = '';
+        
+        if (alreadySentCount > 0) {
+          messageText += `⚠️ ${alreadySentCount} E-Mail(s) bereits gesendet (wird übersprungen). `;
+        }
+        if (validRecipients.length > 0) {
+          messageText += `${validRecipients.length} neue Empfänger gefunden. `;
+        }
+        if (invalidCount > 0) {
+          messageText += `${invalidCount} ungültige Zeile(n) übersprungen.`;
+        }
+        
+        setMessage(messageText.trim() || `✅ Erfolg: ${validRecipients.length} Empfänger erfolgreich geladen.`);
+      } catch (error) {
+        console.error('Error reading file:', error);
+        setMessage('❌ Fehler beim Lesen der Datei. Bitte stellen Sie sicher, dass es sich um eine gültige Excel-Datei handelt.');
+      }
+    };
+
+    reader.onerror = () => {
+      setMessage('❌ Fehler: Die Datei konnte nicht gelesen werden.');
+    };
+
+    reader.readAsBinaryString(uploadedFile);
+  };
 
   const personalizeEmail = (template, recipient) => {
     return template
@@ -126,99 +135,101 @@ const handleFileUpload = (e) => {
       .replace(/{sprache}/gi, recipient.language);
   };
 
-const handleSendEmails = async () => {
-  if (recipients.length === 0) {
-    alert(t.hr?.noRecipients || 'Keine Empfänger zum Senden');
-    return;
-  }
+  const handleSendEmails = async () => {
+    if (recipients.length === 0) {
+      alert(t.hr?.noRecipients || 'Keine Empfänger zum Senden');
+      return;
+    }
 
-  const pendingCount = recipients.filter(r => r.status === 'pending').length;
-  const confirmMsg = (t.hr?.confirmSend || 'Möchten Sie wirklich {count} E-Mails versenden?')
-    .replace('{count}', pendingCount);
-  const confirmed = window.confirm(confirmMsg);
+    const pendingCount = recipients.filter(r => r.status === 'pending').length;
+    
+    if (pendingCount === 0) {
+      alert('Keine neuen E-Mails zum Senden. Alle Empfänger wurden bereits kontaktiert oder sind ungültig.');
+      return;
+    }
+    
+    const confirmMsg = (t.hr?.confirmSend || 'Möchten Sie wirklich {count} E-Mails versenden?')
+      .replace('{count}', pendingCount);
+    const confirmed = window.confirm(confirmMsg);
 
-  if (!confirmed) return;
+    if (!confirmed) return;
 
-  setLoading(true);
-  const results = [];
-  const newlySent = [];
+    setLoading(true);
+    const results = [];
+    const newlySent = [];
 
-  try {
-    for (const recipient of recipients) {
-      if (recipient.status === 'alreadySent' || recipient.status === 'failed') {
-results.push(recipient);
-        continue;
-      }
-      if (!recipient.email) {
-        results.push({ ...recipient, status: 'failed', error: 'Keine E-Mail-Adresse' });
-        continue;
-      }
+    try {
+      for (const recipient of recipients) {
+        if (recipient.status === 'alreadySent' || recipient.status === 'failed') {
+          results.push(recipient);
+          continue;
+        }
 
-      const personalizedBody = personalizeEmail(emailTemplate.body, recipient);
-      const personalizedSubject = personalizeEmail(emailTemplate.subject, recipient);
+        if (!recipient.email) {
+          results.push({ ...recipient, status: 'failed', error: 'Keine E-Mail-Adresse' });
+          continue;
+        }
 
-      try {
-        // CHECK IF RUNNING LOCALLY
-        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        
-        if (isLocal) {
-          // MOCK SUCCESS FOR LOCAL TESTING
-          console.log('📧 [LOCAL TEST] Would send email to:', recipient.email);
-          console.log('Subject:', personalizedSubject);
-          console.log('Body:', personalizedBody);
+        const personalizedBody = personalizeEmail(emailTemplate.body, recipient);
+        const personalizedSubject = personalizeEmail(emailTemplate.subject, recipient);
+
+        try {
+          const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
           
-          // Simulate API delay
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          results.push({ ...recipient, status: 'success' });
-          newlySent.push(recipient.email.toLowerCase());
-        } else {
-          // REAL API CALL FOR PRODUCTION
-          const response = await fetch('/api/send-rejection-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              to: recipient.email,
-              subject: personalizedSubject,
-              body: personalizedBody,
-              language: recipient.language
-            })
-          });
-
-          if (response.ok) {
+          if (isLocal) {
+            console.log('📧 [LOCAL TEST] Would send email to:', recipient.email);
+            console.log('Subject:', personalizedSubject);
+            console.log('Body:', personalizedBody);
+            
+            await new Promise(resolve => setTimeout(resolve, 500));
             results.push({ ...recipient, status: 'success' });
             newlySent.push(recipient.email.toLowerCase());
           } else {
-            results.push({ ...recipient, status: 'failed', error: 'E-Mail-Versand fehlgeschlagen' });
+            const response = await fetch('/api/send-rejection-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                to: recipient.email,
+                subject: personalizedSubject,
+                body: personalizedBody,
+                language: recipient.language
+              })
+            });
+
+            if (response.ok) {
+              results.push({ ...recipient, status: 'success' });
+              newlySent.push(recipient.email.toLowerCase());
+            } else {
+              results.push({ ...recipient, status: 'failed', error: 'E-Mail-Versand fehlgeschlagen' });
+            }
           }
+        } catch (error) {
+          results.push({ ...recipient, status: 'failed', error: error.message });
         }
-      } catch (error) {
-        results.push({ ...recipient, status: 'failed', error: error.message });
+
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
 
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const updatedHistory = [...sentHistory, ...newlySent];
+      setSentHistory(updatedHistory);
+      localStorage.setItem('hr_email_sent_history', JSON.stringify(updatedHistory));
+
+      setRecipients(results);
+      const successCount = results.filter(r => r.status === 'success').length;
+      const skippedCount = results.filter(r => r.status === 'alreadySent').length;
+
+      let finalMessage = `Fertig! ${successCount} von ${results.length} E-Mails gesendet.`;
+      if (skippedCount > 0) {
+        finalMessage += ` ${skippedCount} bereits gesendete E-Mails wurden übersprungen.`;
+      }
+      setMessage(finalMessage);
+    } catch (error) {
+      setMessage('Fehler beim Senden der E-Mails');
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
-
-    setSentHistory([...sentHistory, ...newlySent]);
-
-    const updatedHistory = [...sentHistory, ...newlySent];
-    localStorage.setItem('hr_email_history', JSON.stringify(updatedHistory));
-
-    setRecipients(results);
-    const successCount = results.filter(r => r.status === 'success').length;
-    const skippedCount = results.filter(r => r.status === 'alreadySent').length;
-
-    let finalMessage = `Fertig! ${successCount} von ${results.length} E-Mails gesendet.`;
-    if (skippedCount > 0) {
-      finalMessage += ` ${skippedCount} bereits gesendete E-Mails wurden übersprungen.`;
-    }
-    setMessage(finalMessage);
-  } catch (error) {
-    setMessage('Fehler beim Senden der E-Mails');
-    console.error(error);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const downloadResults = () => {
     const resultsData = recipients.map(r => ({
@@ -226,7 +237,8 @@ results.push(recipient);
       Name: r.name,
       Anrede: r.salutation,
       Sprache: r.language,
-      Status: r.status === 'success' ? 'Gesendet' : 'Fehlgeschlagen',
+      Status: r.status === 'success' ? 'Gesendet' : 
+              r.status === 'alreadySent' ? 'Bereits gesendet' : 'Fehlgeschlagen',
       Fehler: r.error || ''
     }));
 
@@ -253,17 +265,14 @@ results.push(recipient);
     const preview = personalizeEmail(emailTemplate.body, recipient);
     alert(`E-Mail-Vorschau für ${recipient.name}:\n\n${preview}`);
   };
-  useEffect(() => {
-    const savedhistory = localStorage.getItem('hr_email_sent_history');
-    if (savedhistory) {
-      try{
-setSentHistory(JSON.parse(savedhistory));
-      }catch (error){
-        console.error('Error parsing saved history:', error);
-      }
-     
+
+  const clearHistory = () => {
+    if (window.confirm('Möchten Sie den Verlauf der gesendeten E-Mails wirklich löschen?')) {
+      setSentHistory([]);
+      localStorage.removeItem('hr_email_sent_history');
+      setMessage('✅ Verlauf gelöscht.');
     }
-  }, []);
+  };
 
   return (
     <div>
@@ -375,10 +384,25 @@ setSentHistory(JSON.parse(savedhistory));
 
       {/* File Upload */}
       <div style={styles.card}>
-        <h2 style={styles.cardTitle}>
-          <Upload size={24} />
-          Empfänger hochladen
-        </h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2 style={{...styles.cardTitle, marginBottom: 0}}>
+            <Upload size={24} />
+            Empfänger hochladen
+          </h2>
+          
+          {sentHistory.length > 0 && (
+            <button
+              onClick={clearHistory}
+              style={{
+                ...styles.exportButton,
+                fontSize: '13px',
+                padding: '8px 12px'
+              }}
+            >
+              🗑️ Verlauf löschen ({sentHistory.length})
+            </button>
+          )}
+        </div>
 
         <div style={{
           border: '2px dashed #2596BE',
@@ -413,8 +437,7 @@ setSentHistory(JSON.parse(savedhistory));
 
             <button onClick={downloadTemplate} style={styles.exportButton}>
               <FileSpreadsheet size={20} />
-            {t.hr?.DownloadTemplate || 'Vorlage herunterladen'}
-  
+              {t.hr?.DownloadTemplate || 'Vorlage herunterladen'}
             </button>
           </div>
 
@@ -429,10 +452,10 @@ setSentHistory(JSON.parse(savedhistory));
         {message && (
           <div style={{
             padding: '12px',
-            background: message.includes('Fehler') ? '#fee2e2' : '#d1fae5',
-            border: `1px solid ${message.includes('Fehler') ? '#fecaca' : '#a7f3d0'}`,
+            background: message.includes('Fehler') ? '#fee2e2' : message.includes('Warnung') ? '#fef3c7' : '#d1fae5',
+            border: `1px solid ${message.includes('Fehler') ? '#fecaca' : message.includes('Warnung') ? '#fde68a' : '#a7f3d0'}`,
             borderRadius: '8px',
-            color: message.includes('Fehler') ? '#991b1b' : '#065f46',
+            color: message.includes('Fehler') ? '#991b1b' : message.includes('Warnung') ? '#92400e' : '#065f46',
             marginBottom: '16px',
             fontWeight: '500'
           }}>
@@ -471,6 +494,7 @@ setSentHistory(JSON.parse(savedhistory));
                 Gesamt: {recipients.length} |
                 Ausstehend: {recipients.filter(r => r.status === 'pending').length} |
                 Gesendet: {recipients.filter(r => r.status === 'success').length} |
+                Bereits gesendet: {recipients.filter(r => r.status === 'alreadySent').length} |
                 Fehler: {recipients.filter(r => r.status === 'failed').length}
               </span>
             </div>
@@ -496,42 +520,31 @@ setSentHistory(JSON.parse(savedhistory));
                       <td style={styles.td}>
                         <span style={{
                           ...styles.badge,
-                          ...(recipient.status === 'success' ? styles.badgeApproved :
-                            recipient.status === 'alreadySent' ? { background: '#e0e7ff', color: '#3730a3' } :
-                              recipient.status === 'failed' ? styles.badgeRejected :
-                              styles.badgePending),
                           background: '#e0e7ff',
                           color: '#3730a3'
                         }}>
-                          {recipient.status === 'alreadySent' ? '✓ Gesendet' : 
-                        recipient.status == 'alreadySent' ? '⚠️ Bereits gesendet' : 
-                        recipient.status === 'failed' ? '✗ {recipient.error}' : '⏳ Ausstehend'}
+                          {recipient.language}
                         </span>
                       </td>
                       <td style={styles.td}>
                         <span style={{
                           ...styles.badge,
                           ...(recipient.status === 'success' ? styles.badgeApproved :
+                              recipient.status === 'alreadySent' ? { background: '#fef3c7', color: '#92400e' } :
                               recipient.status === 'failed' ? styles.badgeRejected :
                               styles.badgePending)
                         }}>
                           {recipient.status === 'success' ? '✓ Gesendet' :
+                           recipient.status === 'alreadySent' ? '⚠️ Bereits gesendet' :
                            recipient.status === 'failed' ? `✗ ${recipient.error}` :
                            '⏳ Ausstehend'}
                         </span>
                       </td>
                       <td style={styles.td}>
                         <button
-                          onClick={() =>{
-                            if(window.confirm('Möchten Sie den Verlauf der gesendeten E-Mails löschen?')){
-                              sentHistory([]);
-                              localStorage.removeItem('hr_email_sent_history');
-                              setMessage('Verlauf gelöscht');
-                            }
-                          }}
+                          onClick={() => previewEmail(recipient)}
                           style={{
-                            ...styles.exportButton,
-                            padding: '8px 12px',
+                            padding: '6px 12px',
                             background: '#f3f4f6',
                             border: '1px solid #d1d5db',
                             borderRadius: '6px',

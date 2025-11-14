@@ -3,6 +3,7 @@ import { Mail, ArrowLeft, Check, Clock } from 'lucide-react';
 import { styles } from '../styles/styles';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { supabase } from '../supabaseClient'; // ADD THIS
 
 const ForgotPassword = ({ onBack }) => {
   const { t } = useLanguage();
@@ -30,18 +31,29 @@ const ForgotPassword = ({ onBack }) => {
     setSuccess(false);
 
     try {
+      // CHECK IF EMAIL EXISTS IN DATABASE
+      const { data: user, error: checkError } = await supabase
+        .from('students')
+        .select('id, email, name')
+        .eq('email', email.toLowerCase().trim())
+        .single();
+
+      if (checkError || !user) {
+        setMessage(t.forgotPassword?.emailNotFound || 'Kein Konto mit dieser E-Mail-Adresse gefunden.');
+        setLoading(false);
+        return;
+      }
+
+      // Email exists, proceed with reset
       const { error } = await resetPasswordForEmail(email.toLowerCase().trim());
 
       if (error) {
         console.error('Password reset error:', error);
 
-        // Handle specific error cases
-        if (error.code === 'user_not_found') {
-          setMessage(t.forgotPassword?.emailNotFound || 'No account found with this email address.');
-        } else if (error.code === 'account_not_migrated') {
-          setMessage(t.forgotPassword?.accountNotMigrated || 'This account needs to be migrated. Please contact your administrator.');
+        if (error.code === 'account_not_migrated') {
+          setMessage(t.forgotPassword?.accountNotMigrated || 'Dieses Konto muss migriert werden. Bitte kontaktieren Sie Ihren Administrator.');
         } else {
-          setMessage(error.message || t.forgotPassword?.error || 'Error sending reset link');
+          setMessage(error.message || t.forgotPassword?.error || 'Fehler beim Senden des Reset-Links');
         }
 
         setLoading(false);
@@ -49,20 +61,21 @@ const ForgotPassword = ({ onBack }) => {
       }
 
       setSuccess(true);
-      setMessage(t.forgotPassword?.success || 'Reset link has been sent to your email. Please check your inbox.');
+      setMessage(t.forgotPassword?.success || 'Reset-Link wurde an Ihre E-Mail gesendet. Bitte überprüfen Sie Ihr Postfach.');
 
       // Start 100 second cooldown
       setCooldown(100);
 
     } catch (err) {
       console.error('Error:', err);
-      setMessage(t.forgotPassword?.error || 'An error occurred');
+      setMessage(t.forgotPassword?.error || 'Ein Fehler ist aufgetreten');
     } finally {
       setLoading(false);
     }
   };
 
   return (
+   
     <div style={{
       minHeight: '100vh',
       display: 'flex',
